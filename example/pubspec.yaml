@@ -1,0 +1,25 @@
+name: dynamic_form_engine_example
+description: "Interactive Web Showcase for the Dynamic Form Engine Flutter Package."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dynamic_form_engine:
+    path: ../
+  geolocator: ^14.0.3
+  file_picker: ^13.1.0
+  image_picker: ^1.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
