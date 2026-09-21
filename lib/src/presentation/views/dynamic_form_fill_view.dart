@@ -60,6 +60,8 @@ class DynamicFormFillView extends StatefulWidget {
 class _DynamicFormFillViewState extends State<DynamicFormFillView> {
   late final FormFlowController _controller;
   late final bool _internalController;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _fieldKeys = {};
 
   @override
   void initState() {
@@ -82,10 +84,34 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     if (_internalController) {
       _controller.dispose();
     }
     super.dispose();
+  }
+
+  void _scrollToFirstError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final field in _controller.fields) {
+        if (!_controller.isFieldVisible(field)) continue;
+        final hasError = _controller.getError(field.id) != null ||
+            _controller.getError(field.key) != null;
+        if (hasError) {
+          final key = _fieldKeys[field.id];
+          final currentContext = key?.currentContext;
+          if (currentContext != null) {
+            Scrollable.ensureVisible(
+              currentContext,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+              alignment: 0.1,
+            );
+            break;
+          }
+        }
+      }
+    });
   }
 
   Future<void> _handleSubmit() async {
@@ -94,6 +120,7 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
       if (submission != null) {
         widget.onSubmitted?.call(submission);
       } else {
+        _scrollToFirstError();
         widget.onError?.call('Please correct the errors in the form.');
       }
     } catch (e) {
@@ -130,6 +157,7 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
         }
 
         return ListView(
+          controller: _scrollController,
           padding: const EdgeInsets.all(16.0),
           children: [
             // Slot: Header
@@ -155,17 +183,18 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
               final isPrefilled = _controller.prefilledKeys.contains(field.id) ||
                   _controller.prefilledKeys.contains(field.key);
 
+              final key = _fieldKeys.putIfAbsent(field.id, () => GlobalKey());
+
+              Widget wrapped;
               if (widget.fieldWrapperBuilder != null) {
-                return widget.fieldWrapperBuilder!(
+                wrapped = widget.fieldWrapperBuilder!(
                   context,
                   field,
                   fieldWidget,
                   isPrefilled,
                 );
-              }
-
-              if (isPrefilled) {
-                return Container(
+              } else if (isPrefilled) {
+                wrapped = Container(
                   margin: const EdgeInsets.only(bottom: 8.0),
                   padding: const EdgeInsets.all(8.0),
                   decoration: BoxDecoration(
@@ -174,12 +203,112 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
                   ),
                   child: fieldWidget,
                 );
+              } else {
+                wrapped = fieldWidget;
               }
 
-              return fieldWidget;
+              return KeyedSubtree(
+                key: key,
+                child: wrapped,
+              );
             }),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Validation Error Summary Banner
+            if (_controller.errors.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16.0),
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(formTheme.borderRadius),
+                  border: Border.all(color: theme.colorScheme.error),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 20,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Please correct the following errors:',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.onErrorContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ..._controller.fields
+                        .where((f) =>
+                            _controller.isFieldVisible(f) &&
+                            (_controller.getError(f.id) != null ||
+                                _controller.getError(f.key) != null))
+                        .map((f) {
+                      final err = _controller.getError(f.id) ??
+                          _controller.getError(f.key)!;
+                      return InkWell(
+                        onTap: () {
+                          final key = _fieldKeys[f.id];
+                          if (key?.currentContext != null) {
+                            Scrollable.ensureVisible(
+                              key!.currentContext!,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              alignment: 0.1,
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '• ',
+                                style: TextStyle(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '${f.label}: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.colorScheme.onErrorContainer,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: err,
+                                        style: TextStyle(
+                                          color: theme.colorScheme.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 8),
 
             // Slot: Submit Button
             if (!_controller.readOnly)

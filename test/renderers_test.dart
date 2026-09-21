@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dynamic_form_engine/dynamic_form_engine.dart';
-import 'package:dynamic_form_engine/src/presentation/renderers/location_field_renderer.dart';
-import 'package:dynamic_form_engine/src/presentation/renderers/media_field_renderer.dart';
 
 void main() {
   group('LocationFieldRenderer tests', () {

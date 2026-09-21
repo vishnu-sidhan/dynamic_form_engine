@@ -87,20 +87,49 @@ class _SelectionFieldRendererState extends State<SelectionFieldRenderer> {
               currentVal == 'yes' ||
               currentVal == '1' ||
               currentVal == 'checked';
-          content = CheckboxListTile(
-            title: Text(widget.field.label, style: formTheme.fieldLabelStyle),
-            subtitle: widget.field.hint != null ? Text(widget.field.hint!) : null,
-            value: isChecked,
-            contentPadding: EdgeInsets.zero,
-            activeColor: theme.colorScheme.primary,
-            onChanged: isReadOnly
-                ? null
-                : (val) {
-                    widget.controller.updateAnswerAndRecalculate(
-                      widget.field.id,
-                      (val ?? false).toString(),
-                    );
-                  },
+          content = Container(
+            decoration: error != null
+                ? BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(formTheme.borderRadius),
+                    border: Border.all(color: theme.colorScheme.error),
+                  )
+                : null,
+            child: CheckboxListTile(
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.field.label,
+                      style: (formTheme.fieldLabelStyle ?? theme.textTheme.bodyLarge)
+                          ?.copyWith(
+                        color: error != null ? theme.colorScheme.error : null,
+                      ),
+                    ),
+                  ),
+                  if (widget.field.isRequired)
+                    Text(
+                      ' *',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
+              subtitle: widget.field.hint != null ? Text(widget.field.hint!) : null,
+              value: isChecked,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+              activeColor: theme.colorScheme.primary,
+              onChanged: isReadOnly
+                  ? null
+                  : (val) {
+                      widget.controller.updateAnswerAndRecalculate(
+                        widget.field.id,
+                        (val ?? false).toString(),
+                      );
+                    },
+            ),
           );
           break;
 
@@ -108,20 +137,49 @@ class _SelectionFieldRendererState extends State<SelectionFieldRenderer> {
           final isToggled = currentVal == 'true' ||
               currentVal == 'yes' ||
               currentVal == '1';
-          content = SwitchListTile(
-            title: Text(widget.field.label, style: formTheme.fieldLabelStyle),
-            subtitle: widget.field.hint != null ? Text(widget.field.hint!) : null,
-            value: isToggled,
-            contentPadding: EdgeInsets.zero,
-            activeColor: theme.colorScheme.primary,
-            onChanged: isReadOnly
-                ? null
-                : (val) {
-                    widget.controller.updateAnswerAndRecalculate(
-                      widget.field.id,
-                      val.toString(),
-                    );
-                  },
+          content = Container(
+            decoration: error != null
+                ? BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(formTheme.borderRadius),
+                    border: Border.all(color: theme.colorScheme.error),
+                  )
+                : null,
+            child: SwitchListTile(
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.field.label,
+                      style: (formTheme.fieldLabelStyle ?? theme.textTheme.bodyLarge)
+                          ?.copyWith(
+                        color: error != null ? theme.colorScheme.error : null,
+                      ),
+                    ),
+                  ),
+                  if (widget.field.isRequired)
+                    Text(
+                      ' *',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
+              subtitle: widget.field.hint != null ? Text(widget.field.hint!) : null,
+              value: isToggled,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+              activeColor: theme.colorScheme.primary,
+              onChanged: isReadOnly
+                  ? null
+                  : (val) {
+                      widget.controller.updateAnswerAndRecalculate(
+                        widget.field.id,
+                        val.toString(),
+                      );
+                    },
+            ),
           );
           break;
 
@@ -223,7 +281,23 @@ class _SelectionFieldRendererState extends State<SelectionFieldRenderer> {
         widget.field.fieldType == FormFieldType.toggle) {
       return Padding(
         padding: formTheme.fieldPadding,
-        child: content,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            content,
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, left: 12.0),
+                child: Text(
+                  error,
+                  style: TextStyle(
+                    color: theme.colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
       );
     }
 

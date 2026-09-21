@@ -62,6 +62,8 @@ class _GroupRepeaterFieldRendererState extends State<GroupRepeaterFieldRenderer>
     final theme = Theme.of(context);
     final formTheme = FormThemeData.fromContext(context);
     final isReadOnly = widget.field.isReadOnly || widget.controller.readOnly;
+    final error = widget.controller.getError(widget.field.id) ??
+        widget.controller.getError(widget.field.key);
 
     return Padding(
       padding: formTheme.fieldPadding,
@@ -71,7 +73,20 @@ class _GroupRepeaterFieldRendererState extends State<GroupRepeaterFieldRenderer>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.field.label, style: formTheme.sectionHeaderStyle),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(widget.field.label, style: formTheme.sectionHeaderStyle),
+                  if (widget.field.isRequired)
+                    Text(
+                      ' *',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
               if (!isReadOnly)
                 TextButton.icon(
                   onPressed: () {
@@ -95,14 +110,23 @@ class _GroupRepeaterFieldRendererState extends State<GroupRepeaterFieldRenderer>
               padding: const EdgeInsets.symmetric(vertical: 24),
               alignment: Alignment.center,
               decoration: BoxDecoration(
+                color: error != null
+                    ? theme.colorScheme.errorContainer.withValues(alpha: 0.15)
+                    : null,
                 border: Border.all(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  color: error != null
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.outline.withValues(alpha: 0.2),
                 ),
                 borderRadius: BorderRadius.circular(formTheme.borderRadius),
               ),
               child: Text(
                 'No entries added yet',
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                  color: error != null
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           else
@@ -165,6 +189,17 @@ class _GroupRepeaterFieldRendererState extends State<GroupRepeaterFieldRenderer>
                 ),
               );
             }),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6.0, left: 4.0),
+              child: Text(
+                error,
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontSize: 12,
+                ),
+              ),
+            ),
         ],
       ),
     );

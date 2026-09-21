@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dynamic_form_engine/dynamic_form_engine.dart';
+import 'presentation/widgets/backup_export_sheet.dart';
+import 'services/backup/form_backup_manager.dart';
+import 'services/backup/form_media_bundle_service.dart';
 import 'services/example_platform_handlers.dart';
 
 void main() async {
@@ -388,13 +391,24 @@ void main() async {
   await storageAdapter.saveTemplate(workOrderTemplate);
   await storageAdapter.saveTemplate(feedbackSurveyTemplate);
 
-  runApp(DynamicFormEngineExampleApp(storageAdapter: storageAdapter));
+  final bundleService = FormMediaBundleService(storageAdapter: storageAdapter);
+  final backupManager = FormBackupManager(bundleService: bundleService);
+
+  runApp(DynamicFormEngineExampleApp(
+    storageAdapter: storageAdapter,
+    backupManager: backupManager,
+  ));
 }
 
 class DynamicFormEngineExampleApp extends StatefulWidget {
   final FormStorageAdapter storageAdapter;
+  final FormBackupManager? backupManager;
 
-  const DynamicFormEngineExampleApp({super.key, required this.storageAdapter});
+  const DynamicFormEngineExampleApp({
+    super.key,
+    required this.storageAdapter,
+    this.backupManager,
+  });
 
   @override
   State<DynamicFormEngineExampleApp> createState() =>
@@ -404,6 +418,12 @@ class DynamicFormEngineExampleApp extends StatefulWidget {
 class _DynamicFormEngineExampleAppState
     extends State<DynamicFormEngineExampleApp> {
   ThemeMode _themeMode = ThemeMode.system;
+  late final FormBackupManager _backupManager =
+      widget.backupManager ??
+          FormBackupManager(
+            bundleService:
+                FormMediaBundleService(storageAdapter: widget.storageAdapter),
+          );
 
   @override
   Widget build(BuildContext context) {
@@ -427,6 +447,7 @@ class _DynamicFormEngineExampleAppState
       ),
       home: ShowcaseHomeScreen(
         storageAdapter: widget.storageAdapter,
+        backupManager: _backupManager,
         onToggleTheme: () {
           setState(() {
             _themeMode = _themeMode == ThemeMode.dark
@@ -441,11 +462,13 @@ class _DynamicFormEngineExampleAppState
 
 class ShowcaseHomeScreen extends StatefulWidget {
   final FormStorageAdapter storageAdapter;
+  final FormBackupManager backupManager;
   final VoidCallback onToggleTheme;
 
   const ShowcaseHomeScreen({
     super.key,
     required this.storageAdapter,
+    required this.backupManager,
     required this.onToggleTheme,
   });
 
@@ -496,10 +519,16 @@ class _ShowcaseHomeScreenState extends State<ShowcaseHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.dynamic_form_rounded, color: theme.colorScheme.primary),
             const SizedBox(width: 12),
-            const Text('Dynamic Form Engine Showcase'),
+            const Flexible(
+              child: Text(
+                'Dynamic Form Engine Showcase',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -529,6 +558,20 @@ class _ShowcaseHomeScreenState extends State<ShowcaseHomeScreen> {
                 }
               },
             ),
+          IconButton(
+            tooltip: 'Backup & Restore',
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => BackupExportSheet(
+                  backupManager: widget.backupManager,
+                  onRestored: _reload,
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Toggle Theme',
             icon: Icon(

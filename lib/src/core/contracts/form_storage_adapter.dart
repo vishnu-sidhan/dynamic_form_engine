@@ -24,6 +24,7 @@ abstract class FormStorageAdapter {
   // ---------------------------------------------------------------------------
   Future<void> saveSubmission(FormSubmission submission);
   Future<FormSubmission?> getSubmissionById(String id);
+  Future<List<FormSubmission>> getSubmissions({bool includeArchived = false});
   Future<List<FormSubmission>> querySubmissions({
     required String formId,
     String? contextId,

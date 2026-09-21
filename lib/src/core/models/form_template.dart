@@ -100,6 +100,11 @@ class FormTemplate {
     };
   }
 
+  Map<String, dynamic> toJson() => toMap();
+
+  factory FormTemplate.fromJson(Map<String, dynamic> json) =>
+      FormTemplate.fromMap(json);
+
   factory FormTemplate.fromMap(Map<String, dynamic> map) {
     List<FormFieldDefinition> parsedFields = [];
     if (map['fields'] is List) {

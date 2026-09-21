@@ -113,6 +113,26 @@ class DefaultSembastStorageAdapter implements FormStorageAdapter {
   }
 
   @override
+  Future<List<FormSubmission>> getSubmissions({
+    bool includeArchived = false,
+  }) async {
+    final records = await _submissionStore.find(
+      db,
+      finder: Finder(
+        filter: Filter.custom((record) {
+          final data = record.value as Map<String, dynamic>;
+          if (!includeArchived && data['deletedAt'] != null) {
+            return false;
+          }
+          return true;
+        }),
+        sortOrders: [SortOrder('submittedAt', false)],
+      ),
+    );
+    return records.map((r) => FormSubmission.fromMap(r.value)).toList();
+  }
+
+  @override
   Future<List<FormSubmission>> querySubmissions({
     required String formId,
     String? contextId,

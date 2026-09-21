@@ -31,6 +31,9 @@ class FormSubmission {
   // Convenient lookup helper for field key or id
   dynamic getAnswer(String key) => answers[key];
 
+  /// Alias for answers for compatibility with external serializers
+  Map<String, dynamic> get data => answers;
+
   FormSubmission copyWith({
     String? id,
     String? formId,
@@ -72,6 +75,11 @@ class FormSubmission {
     };
   }
 
+  Map<String, dynamic> toJson() => toMap();
+
+  factory FormSubmission.fromJson(Map<String, dynamic> json) =>
+      FormSubmission.fromMap(json);
+
   factory FormSubmission.fromMap(Map<String, dynamic> map) {
     DateTime parsedSubmittedAt = DateTime.now();
     if (map['submittedAt'] != null) {
@@ -102,6 +110,8 @@ class FormSubmission {
     Map<String, dynamic> parsedAnswers = {};
     if (map['answers'] is Map) {
       parsedAnswers = Map<String, dynamic>.from(map['answers'] as Map);
+    } else if (map['data'] is Map) {
+      parsedAnswers = Map<String, dynamic>.from(map['data'] as Map);
     }
 
     return FormSubmission(

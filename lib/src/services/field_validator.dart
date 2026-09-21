@@ -11,8 +11,30 @@ class FieldValidator {
     final strVal = value?.toString().trim() ?? '';
 
     // 1. Required constraint check
-    if (field.isRequired && strVal.isEmpty) {
-      return field.customErrorMessage ?? 'This field is required';
+    if (field.isRequired) {
+      // Group repeater required constraint: must contain at least one entry
+      if (field.fieldType == FormFieldType.groupRepeater ||
+          field.fieldType == FormFieldType.dynamicFieldGroup) {
+        if (strVal.isEmpty || strVal == '[]' || (value is List && value.isEmpty)) {
+          return field.customErrorMessage ?? 'Please add at least one entry';
+        }
+      }
+
+      if (strVal.isEmpty) {
+        return field.customErrorMessage ?? 'This field is required';
+      }
+
+      // Checkbox required constraint: must be checked / affirmative
+      if (field.fieldType == FormFieldType.checkbox) {
+        final isChecked = value == true ||
+            strVal.toLowerCase() == 'true' ||
+            strVal == '1' ||
+            strVal.toLowerCase() == 'yes' ||
+            strVal.toLowerCase() == 'checked';
+        if (!isChecked) {
+          return field.customErrorMessage ?? 'This field is required';
+        }
+      }
     }
 
     // If empty and not required, constraint rules (min/max/regex) don't trigger
