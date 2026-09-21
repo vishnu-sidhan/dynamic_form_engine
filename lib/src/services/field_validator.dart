@@ -45,9 +45,47 @@ class FieldValidator {
     // 2. Field type specific constraints
     switch (field.fieldType) {
       case FormFieldType.number:
+        final intVal = int.tryParse(strVal);
+        if (intVal == null) {
+          if (num.tryParse(strVal) != null) {
+            return field.customErrorMessage ??
+                'Please enter a whole number without decimals';
+          }
+          return field.customErrorMessage ?? 'Please enter a valid number';
+        }
+        final minVal = field.min ?? (rules['min'] as num?);
+        if (minVal != null && intVal < minVal) {
+          return field.customErrorMessage ?? 'Minimum value is $minVal';
+        }
+        final maxVal = field.max ?? (rules['max'] as num?);
+        if (maxVal != null && intVal > maxVal) {
+          return field.customErrorMessage ?? 'Maximum value is $maxVal';
+        }
+        break;
+
       case FormFieldType.decimal:
       case FormFieldType.currency:
-        final numVal = num.tryParse(strVal);
+        var cleaned = strVal.replaceAll(RegExp(r'[$€£¥₹\s]'), '');
+        if (cleaned.contains('.') && cleaned.contains(',')) {
+          if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+            // European format: 1.234,56 -> 1234.56
+            cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
+          } else {
+            // US/Standard format: 1,234.56 -> 1234.56
+            cleaned = cleaned.replaceAll(',', '');
+          }
+        } else if (cleaned.contains(',')) {
+          // Single or multiple commas without dots
+          // If followed by 1 or 2 digits at the end (e.g. 4,5 or 12,50), treat as decimal comma
+          if (RegExp(r',\d{1,2}$').hasMatch(cleaned)) {
+            cleaned = cleaned.replaceAll(',', '.');
+          } else {
+            // Thousands separator (e.g. 2,500 or 1,000,000)
+            cleaned = cleaned.replaceAll(',', '');
+          }
+        }
+
+        final numVal = num.tryParse(cleaned);
         if (numVal == null) {
           return field.customErrorMessage ?? 'Please enter a valid number';
         }
@@ -69,9 +107,14 @@ class FieldValidator {
         break;
 
       case FormFieldType.phone:
-        final phoneRegex = RegExp(r'^\+?[0-9\s\-()]{7,20}$');
-        if (!phoneRegex.hasMatch(strVal)) {
+        final phoneCharsRegex = RegExp(r'^\+?[\d\s\-().]+$');
+        if (!phoneCharsRegex.hasMatch(strVal)) {
           return field.customErrorMessage ?? 'Please enter a valid phone number';
+        }
+        final digitsOnly = strVal.replaceAll(RegExp(r'\D'), '');
+        if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+          return field.customErrorMessage ??
+              'Please enter a valid phone number (7 to 15 digits)';
         }
         break;
 

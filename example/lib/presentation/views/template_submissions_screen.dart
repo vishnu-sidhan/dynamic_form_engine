@@ -26,27 +26,106 @@ class TemplateSubmissionsScreen extends StatefulWidget {
 }
 
 class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
+  late FormTemplate _currentTemplate;
   late Future<List<FormSubmission>> _submissionsFuture;
 
   @override
   void initState() {
     super.initState();
+    _currentTemplate = widget.template;
     _loadSubmissions();
   }
 
   void _loadSubmissions() {
     setState(() {
       _submissionsFuture = widget.storageAdapter.getSubmissions().then(
-            (list) => list.where((s) => s.templateId == widget.template.id).toList(),
+            (list) => list
+                .where((s) => s.templateId == _currentTemplate.id)
+                .toList(),
           );
     });
+  }
+
+  Future<void> _navigateToEditForm() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (routeContext) => Scaffold(
+          appBar: AppBar(title: Text('Edit: ${_currentTemplate.title}')),
+          body: DynamicFormCreatorView(
+            initialTemplate: _currentTemplate,
+            storageAdapter: widget.storageAdapter,
+            onSaved: (updatedTemplate) {
+              if (routeContext.mounted) {
+                Navigator.pop(routeContext, updatedTemplate);
+              }
+            },
+          ),
+        ),
+      ),
+    );
+
+    final refreshed =
+        await widget.storageAdapter.getTemplate(_currentTemplate.id);
+    if (refreshed != null && mounted) {
+      setState(() {
+        _currentTemplate = refreshed;
+      });
+      _loadSubmissions();
+    }
+  }
+
+  Future<void> _confirmAndDeleteTemplate() async {
+    final subs = await _submissionsFuture;
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Form Template?'),
+        content: Text(
+          subs.isNotEmpty
+              ? 'Are you sure you want to delete "${_currentTemplate.title}"?\n\nThis will also delete ${subs.length} associated submission${subs.length == 1 ? '' : 's'}. This action cannot be undone.'
+              : 'Are you sure you want to delete "${_currentTemplate.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      for (final s in subs) {
+        await widget.storageAdapter.deleteSubmission(s.id, softDelete: false);
+      }
+      await widget.storageAdapter
+          .deleteTemplate(_currentTemplate.id, softDelete: false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Form "${_currentTemplate.title}" deleted')),
+        );
+        Navigator.pop(context, true);
+      }
+    }
   }
 
   Future<void> _exportSubmissionsJson(List<FormSubmission> subs) async {
     try {
       final list = subs.map((s) => s.toMap()).toList();
       final jsonStr = const JsonEncoder.withIndent('  ').convert(list);
-      final filename = '${widget.template.id}_submissions.json';
+      final filename = '${_currentTemplate.id}_submissions.json';
       final xFile = XFile.fromData(
         utf8.encode(jsonStr),
         mimeType: 'application/json',
@@ -66,7 +145,7 @@ class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
       await SharePlus.instance.share(
         ShareParams(
           files: [xFile],
-          text: 'Submissions for ${widget.template.title}',
+          text: 'Submissions for ${_currentTemplate.title}',
           subject: 'Form Submissions Export',
         ),
       );
@@ -87,7 +166,7 @@ class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.template.title,
+              _currentTemplate.title,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const Text(
@@ -132,6 +211,51 @@ class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: _loadSubmissions,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Form Options',
+            onSelected: (val) async {
+              if (val == 'edit') {
+                await _navigateToEditForm();
+              } else if (val == 'delete') {
+                await _confirmAndDeleteTemplate();
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_outlined, size: 18),
+                    SizedBox(width: 8),
+                    Text('Edit Form'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Theme.of(ctx).colorScheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Delete Form',
+                      style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -205,7 +329,7 @@ class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
                           appBar: AppBar(title: const Text('Submission Details')),
                           body: DynamicSubmissionDetailView(
                             submission: item,
-                            template: widget.template,
+                            template: _currentTemplate,
                           ),
                         ),
                       ),
@@ -225,14 +349,14 @@ class _TemplateSubmissionsScreenState extends State<TemplateSubmissionsScreen> {
             context,
             MaterialPageRoute(
               builder: (routeContext) => Scaffold(
-                appBar: AppBar(title: Text('Fill: ${widget.template.title}')),
+                appBar: AppBar(title: Text('Fill: ${_currentTemplate.title}')),
                 body: DynamicFormFillView(
-                  template: widget.template,
+                  template: _currentTemplate,
                   registry: createFunctionalExampleRegistry(),
                   onSubmit: (submissionData) async {
                     final submission = FormSubmission(
                       id: 'sub_${DateTime.now().millisecondsSinceEpoch}',
-                      templateId: widget.template.id,
+                      templateId: _currentTemplate.id,
                       data: submissionData,
                       submittedAt: DateTime.now().toUtc(),
                     );

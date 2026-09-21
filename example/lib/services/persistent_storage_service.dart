@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast_io.dart';
+import 'package:sembast/sembast_memory.dart';
 import 'package:sembast_web/sembast_web.dart';
 import 'package:dynamic_form_engine/dynamic_form_engine.dart';
 
@@ -11,7 +12,7 @@ class PersistentStorageService implements FormStorageAdapter {
   static const String _submissionsStore = 'form_submissions';
   static const String _outboxStore = 'form_outbox';
 
-  late final Database _db;
+  late Database _db;
   final StoreRef<String, Map<String, dynamic>> _templateStoreRef =
       stringMapStoreFactory.store(_templatesStore);
   final StoreRef<String, Map<String, dynamic>> _submissionStoreRef =
@@ -26,9 +27,17 @@ class PersistentStorageService implements FormStorageAdapter {
     if (_isInitialized) return;
 
     if (kIsWeb) {
-      // IndexedDB persistence on Web
-      final factory = databaseFactoryWeb;
-      _db = await factory.openDatabase(_dbName);
+      try {
+        // IndexedDB persistence on Web
+        final factory = databaseFactoryWeb;
+        _db = await factory.openDatabase(_dbName);
+      } catch (e) {
+        debugPrint(
+          '[PersistentStorageService] Warning: Failed to open IndexedDB on Web ($e). '
+          'Falling back to in-memory database.',
+        );
+        _db = await databaseFactoryMemory.openDatabase(_dbName);
+      }
     } else {
       // Persistent File I/O on Android, iOS, macOS, Linux, Windows
       final appDocDir = await getApplicationDocumentsDirectory();
@@ -46,33 +55,49 @@ class PersistentStorageService implements FormStorageAdapter {
     bool includeArchived = false,
   }) async {
     _ensureInitialized();
-    final records = await _templateStoreRef.find(
-      _db,
-      finder: Finder(
-        filter: Filter.custom((record) {
-          final data = record.value as Map<String, dynamic>;
-          if (!includeArchived && data['deletedAt'] != null) {
-            return false;
-          }
-          if (contextScope != null && contextScope.isNotEmpty) {
-            final scope = data['contextScope']?.toString();
-            if (scope != null && scope != contextScope && scope != 'global') {
+    try {
+      final records = await _templateStoreRef.find(
+        _db,
+        finder: Finder(
+          filter: Filter.custom((record) {
+            final data = record.value as Map<String, dynamic>;
+            if (!includeArchived && data['deletedAt'] != null) {
               return false;
             }
-          }
-          return true;
-        }),
-      ),
-    );
-    return records.map((record) => FormTemplate.fromJson(record.value)).toList();
+            if (contextScope != null && contextScope.isNotEmpty) {
+              final scope = data['contextScope']?.toString();
+              if (scope != null && scope != contextScope && scope != 'global') {
+                return false;
+              }
+            }
+            return true;
+          }),
+        ),
+      );
+      return records.map((record) => FormTemplate.fromJson(record.value)).toList();
+    } catch (e) {
+      if (kIsWeb) {
+        debugPrint('[PersistentStorageService] Web getTemplates error: $e');
+        return [];
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<FormTemplate?> getTemplate(String id) async {
     _ensureInitialized();
-    final data = await _templateStoreRef.record(id).get(_db);
-    if (data == null) return null;
-    return FormTemplate.fromJson(data);
+    try {
+      final data = await _templateStoreRef.record(id).get(_db);
+      if (data == null) return null;
+      return FormTemplate.fromJson(data);
+    } catch (e) {
+      if (kIsWeb) {
+        debugPrint('[PersistentStorageService] Web getTemplate error: $e');
+        return null;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -101,20 +126,28 @@ class PersistentStorageService implements FormStorageAdapter {
   @override
   Future<List<FormSubmission>> getSubmissions({bool includeArchived = false}) async {
     _ensureInitialized();
-    final records = await _submissionStoreRef.find(
-      _db,
-      finder: Finder(
-        filter: Filter.custom((record) {
-          final data = record.value as Map<String, dynamic>;
-          if (!includeArchived && data['deletedAt'] != null) {
-            return false;
-          }
-          return true;
-        }),
-        sortOrders: [SortOrder('submittedAt', false)],
-      ),
-    );
-    return records.map((record) => FormSubmission.fromJson(record.value)).toList();
+    try {
+      final records = await _submissionStoreRef.find(
+        _db,
+        finder: Finder(
+          filter: Filter.custom((record) {
+            final data = record.value as Map<String, dynamic>;
+            if (!includeArchived && data['deletedAt'] != null) {
+              return false;
+            }
+            return true;
+          }),
+          sortOrders: [SortOrder('submittedAt', false)],
+        ),
+      );
+      return records.map((record) => FormSubmission.fromJson(record.value)).toList();
+    } catch (e) {
+      if (kIsWeb) {
+        debugPrint('[PersistentStorageService] Web getSubmissions error: $e');
+        return [];
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -158,34 +191,42 @@ class PersistentStorageService implements FormStorageAdapter {
     int? offset,
   }) async {
     _ensureInitialized();
-    final records = await _submissionStoreRef.find(
-      _db,
-      finder: Finder(
-        filter: Filter.custom((record) {
-          final data = record.value as Map<String, dynamic>;
-          if (data['deletedAt'] != null) return false;
-          if (data['formId'] != formId && data['templateId'] != formId) {
-            return false;
-          }
-          if (contextId != null &&
-              contextId.isNotEmpty &&
-              data['contextId'] != contextId) {
-            return false;
-          }
-          if (startDate != null || endDate != null) {
-            final subDate = DateTime.tryParse(data['submittedAt'] ?? '');
-            if (subDate == null) return false;
-            if (startDate != null && subDate.isBefore(startDate)) return false;
-            if (endDate != null && subDate.isAfter(endDate)) return false;
-          }
-          return true;
-        }),
-        sortOrders: [SortOrder('submittedAt', false)],
-        limit: limit,
-        offset: offset,
-      ),
-    );
-    return records.map((r) => FormSubmission.fromJson(r.value)).toList();
+    try {
+      final records = await _submissionStoreRef.find(
+        _db,
+        finder: Finder(
+          filter: Filter.custom((record) {
+            final data = record.value as Map<String, dynamic>;
+            if (data['deletedAt'] != null) return false;
+            if (data['formId'] != formId && data['templateId'] != formId) {
+              return false;
+            }
+            if (contextId != null &&
+                contextId.isNotEmpty &&
+                data['contextId'] != contextId) {
+              return false;
+            }
+            if (startDate != null || endDate != null) {
+              final subDate = DateTime.tryParse(data['submittedAt'] ?? '');
+              if (subDate == null) return false;
+              if (startDate != null && subDate.isBefore(startDate)) return false;
+              if (endDate != null && subDate.isAfter(endDate)) return false;
+            }
+            return true;
+          }),
+          sortOrders: [SortOrder('submittedAt', false)],
+          limit: limit,
+          offset: offset,
+        ),
+      );
+      return records.map((r) => FormSubmission.fromJson(r.value)).toList();
+    } catch (e) {
+      if (kIsWeb) {
+        debugPrint('[PersistentStorageService] Web querySubmissions error: $e');
+        return [];
+      }
+      rethrow;
+    }
   }
 
   @override

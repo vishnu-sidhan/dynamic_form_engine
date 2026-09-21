@@ -67,19 +67,35 @@ class _TextFieldRendererState extends State<TextFieldRenderer> {
         keyboardType = TextInputType.multiline;
         break;
       case FormFieldType.number:
-        keyboardType = const TextInputType.numberWithOptions(signed: true);
-        formatters = [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*'))];
+        final allowNegative = widget.field.min == null || widget.field.min! < 0;
+        keyboardType = TextInputType.numberWithOptions(signed: allowNegative);
+        formatters = [
+          allowNegative
+              ? FilteringTextInputFormatter.allow(RegExp(r'[0-9\-]'))
+              : FilteringTextInputFormatter.digitsOnly,
+        ];
         break;
       case FormFieldType.decimal:
       case FormFieldType.currency:
-        keyboardType = const TextInputType.numberWithOptions(decimal: true, signed: true);
-        formatters = [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))];
+        final allowNegative = widget.field.min == null || widget.field.min! < 0;
+        keyboardType = TextInputType.numberWithOptions(
+          decimal: true,
+          signed: allowNegative,
+        );
+        formatters = [
+          allowNegative
+              ? FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-,\$€£¥₹]'))
+              : FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\$€£¥₹]')),
+        ];
         break;
       case FormFieldType.email:
         keyboardType = TextInputType.emailAddress;
         break;
       case FormFieldType.phone:
         keyboardType = TextInputType.phone;
+        formatters = [
+          FilteringTextInputFormatter.allow(RegExp(r'[\d\s+\-().]')),
+        ];
         break;
       default:
         keyboardType = TextInputType.text;

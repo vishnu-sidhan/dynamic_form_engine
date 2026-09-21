@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/models/form_template.dart';
@@ -13,8 +14,8 @@ class DynamicFormCreatorView extends StatefulWidget {
   final FormTemplate? initialTemplate;
   final FormStorageAdapter? storageAdapter;
   final String? defaultContextScope;
-  final void Function(FormTemplate template)? onSaved;
-  final void Function(FormTemplate template)? onSave;
+  final FutureOr<void> Function(FormTemplate template)? onSaved;
+  final FutureOr<void> Function(FormTemplate template)? onSave;
   final Widget Function(BuildContext context, VoidCallback onSave)? actionButtonsBuilder;
 
   const DynamicFormCreatorView({
@@ -43,7 +44,9 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
     super.initState();
     final tmpl = widget.initialTemplate;
     _formId = tmpl?.id ?? const Uuid().v4();
-    _nameController = TextEditingController(text: tmpl?.name ?? '');
+    _nameController = TextEditingController(
+      text: tmpl?.title.isNotEmpty == true ? tmpl!.title : (tmpl?.name ?? ''),
+    );
     _descController = TextEditingController(text: tmpl?.description ?? '');
     _fields = tmpl != null ? List<FormFieldDefinition>.from(tmpl.fields) : [];
   }
@@ -70,12 +73,14 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
       final updatedTemplate = FormTemplate(
         id: _formId,
         name: name,
+        title: name,
         description: _descController.text.trim().isEmpty
             ? null
             : _descController.text.trim(),
         contextScope: widget.initialTemplate?.contextScope ?? widget.defaultContextScope,
         isSystemLocked: widget.initialTemplate?.isSystemLocked ?? false,
         version: (widget.initialTemplate?.version ?? 0) + 1,
+        metadata: widget.initialTemplate?.metadata ?? const {},
         createdAt: widget.initialTemplate?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         fields: _fields.asMap().entries.map((e) {
@@ -87,8 +92,12 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
         await widget.storageAdapter!.saveTemplate(updatedTemplate);
       }
 
-      widget.onSaved?.call(updatedTemplate);
-      widget.onSave?.call(updatedTemplate);
+      if (widget.onSaved != null) {
+        await widget.onSaved!(updatedTemplate);
+      }
+      if (widget.onSave != null) {
+        await widget.onSave!(updatedTemplate);
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -98,6 +107,12 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
     final labelCtrl = TextEditingController(text: existingField?.label ?? '');
     final keyCtrl = TextEditingController(text: existingField?.key ?? '');
     final hintCtrl = TextEditingController(text: existingField?.hint ?? '');
+    final minCtrl = TextEditingController(
+      text: existingField?.min != null ? existingField!.min.toString() : '',
+    );
+    final maxCtrl = TextEditingController(
+      text: existingField?.max != null ? existingField!.max.toString() : '',
+    );
     final optionsCtrl = TextEditingController(
       text: existingField?.options.map((o) => o.label).join(', ') ?? '',
     );
@@ -130,21 +145,27 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
                       controller: labelCtrl,
                       decoration: const InputDecoration(labelText: 'Field Label *'),
                       onChanged: (val) {
-                        if (keyCtrl.text.isEmpty ||
-                            keyCtrl.text ==
-                                labelCtrl.text
-                                    .toLowerCase()
-                                    .replaceAll(RegExp(r'\s+'), '_')) {
-                          keyCtrl.text =
-                              val.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+                        if (existingField == null) {
+                          final slug = val
+                              .trim()
+                              .toLowerCase()
+                              .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_')
+                              .replaceAll(RegExp(r'^_+|_+$'), '');
+                          keyCtrl.text = slug;
+                          setDialogState(() {});
                         }
                       },
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: keyCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Field Key (Internal Identifier)',
+                      readOnly: true,
+                      enabled: false,
+                      decoration: InputDecoration(
+                        labelText: 'Field Key (Auto-generated)',
+                        helperText: 'Internal identifier automatically generated and locked',
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -166,6 +187,40 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
                       decoration: const InputDecoration(labelText: 'Hint / Placeholder'),
                     ),
                     const SizedBox(height: 8),
+                    if (selectedType == FormFieldType.number ||
+                        selectedType == FormFieldType.decimal ||
+                        selectedType == FormFieldType.currency) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: minCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true,
+                                signed: true,
+                              ),
+                              decoration: const InputDecoration(
+                                labelText: 'Min Value (Optional)',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: maxCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true,
+                                signed: true,
+                              ),
+                              decoration: const InputDecoration(
+                                labelText: 'Max Value (Optional)',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (selectedType == FormFieldType.dropdown ||
                         selectedType == FormFieldType.radio ||
                         selectedType == FormFieldType.multiSelect) ...[
@@ -230,16 +285,29 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
                         .map((s) => FormOption(label: s, value: s))
                         .toList();
 
+                    final slug = label
+                        .toLowerCase()
+                        .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_')
+                        .replaceAll(RegExp(r'^_+|_+$'), '');
+                    final autoKey = slug.isNotEmpty
+                        ? slug
+                        : 'field_${const Uuid().v4().substring(0, 8)}';
+                    final fieldKey = existingField != null
+                        ? (existingField.key.isNotEmpty ? existingField.key : autoKey)
+                        : (keyCtrl.text.trim().isNotEmpty
+                            ? keyCtrl.text.trim()
+                            : autoKey);
+
                     final newField = FormFieldDefinition(
                       id: existingField?.id ?? const Uuid().v4(),
                       formId: _formId,
-                      key: keyCtrl.text.trim().isNotEmpty
-                          ? keyCtrl.text.trim()
-                          : label.toLowerCase().replaceAll(RegExp(r'\s+'), '_'),
+                      key: fieldKey,
                       label: label,
                       hint: hintCtrl.text.trim().isEmpty ? null : hintCtrl.text.trim(),
                       fieldType: selectedType,
                       isRequired: isRequired,
+                      min: num.tryParse(minCtrl.text.trim()),
+                      max: num.tryParse(maxCtrl.text.trim()),
                       options: opts,
                       calculationFormula: formulaCtrl.text.trim().isEmpty
                           ? null
@@ -413,9 +481,12 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Save Template',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  : Text(
+                      widget.initialTemplate != null
+                          ? 'Update Template'
+                          : 'Save Template',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
             ),
           ),

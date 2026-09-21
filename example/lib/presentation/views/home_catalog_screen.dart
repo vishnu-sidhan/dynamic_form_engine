@@ -117,8 +117,8 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
         builder: (routeContext) => Scaffold(
           appBar: AppBar(title: const Text('Create Form Template')),
           body: DynamicFormCreatorView(
-            onSave: (newTemplate) async {
-              await widget.storageAdapter.saveTemplate(newTemplate);
+            storageAdapter: widget.storageAdapter,
+            onSaved: (newTemplate) {
               if (routeContext.mounted) Navigator.pop(routeContext);
             },
           ),
@@ -126,6 +126,74 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
       ),
     );
     _refreshData();
+  }
+
+  Future<void> _navigateToEditForm(FormTemplate template) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (routeContext) => Scaffold(
+          appBar: AppBar(title: Text('Edit: ${template.title}')),
+          body: DynamicFormCreatorView(
+            initialTemplate: template,
+            storageAdapter: widget.storageAdapter,
+            onSaved: (updatedTemplate) {
+              if (routeContext.mounted) Navigator.pop(routeContext);
+            },
+          ),
+        ),
+      ),
+    );
+    _refreshData();
+  }
+
+  Future<void> _confirmAndDeleteTemplate(
+    FormTemplate template,
+    int submissionCount,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Form Template?'),
+        content: Text(
+          submissionCount > 0
+              ? 'Are you sure you want to delete "${template.title}"?\n\nThis will also delete $submissionCount associated submission${submissionCount == 1 ? '' : 's'}. This action cannot be undone.'
+              : 'Are you sure you want to delete "${template.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final allSubmissions = await widget.storageAdapter.getSubmissions();
+      final related =
+          allSubmissions.where((s) => s.templateId == template.id).toList();
+      for (final s in related) {
+        await widget.storageAdapter.deleteSubmission(s.id, softDelete: false);
+      }
+      await widget.storageAdapter
+          .deleteTemplate(template.id, softDelete: false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Form "${template.title}" deleted')),
+        );
+      }
+      _refreshData();
+    }
   }
 
   @override
@@ -327,6 +395,8 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
                                     await _exportTemplateJson(template);
                                   } else if (val == 'fill') {
                                     await _navigateToFillForm(template);
+                                  } else if (val == 'edit') {
+                                    await _navigateToEditForm(template);
                                   } else if (val == 'submissions') {
                                     await Navigator.push(
                                       context,
@@ -339,6 +409,9 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
                                       ),
                                     );
                                     _refreshData();
+                                  } else if (val == 'delete') {
+                                    await _confirmAndDeleteTemplate(
+                                        template, count);
                                   }
                                 },
                                 itemBuilder: (ctx) => [
@@ -350,6 +423,17 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
                                         Icon(Icons.edit_note, size: 18),
                                         SizedBox(width: 8),
                                         Text('Fill Form'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.edit_outlined, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Edit Form'),
                                       ],
                                     ),
                                   ),
@@ -372,6 +456,28 @@ class _HomeCatalogScreenState extends State<HomeCatalogScreen> {
                                         Icon(Icons.code_rounded, size: 18),
                                         SizedBox(width: 8),
                                         Text('Export JSON'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuDivider(),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: Theme.of(ctx).colorScheme.error,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Delete Form',
+                                          style: TextStyle(
+                                            color:
+                                                Theme.of(ctx).colorScheme.error,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
