@@ -30,6 +30,7 @@ class DynamicFormFillView extends StatefulWidget {
 
   // Lifecycle Callbacks
   final void Function(FormSubmission submission)? onSubmitted;
+  final void Function(Map<String, dynamic> data)? onSubmit;
   final void Function(String error)? onError;
 
   const DynamicFormFillView({
@@ -47,6 +48,7 @@ class DynamicFormFillView extends StatefulWidget {
     this.submitButtonBuilder,
     this.emptyStateBuilder,
     this.onSubmitted,
+    this.onSubmit,
     this.onError,
   }) : assert(
           template != null || controller != null,
@@ -119,6 +121,7 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
       final submission = await _controller.submit();
       if (submission != null) {
         widget.onSubmitted?.call(submission);
+        widget.onSubmit?.call(submission.answers);
       } else {
         _scrollToFirstError();
         widget.onError?.call('Please correct the errors in the form.');
@@ -334,10 +337,10 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
             color: theme.colorScheme.onSurface,
           ),
         ),
-        if (template.description != null && template.description!.isNotEmpty) ...[
+        if (template.description.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            template.description!,
+            template.description,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

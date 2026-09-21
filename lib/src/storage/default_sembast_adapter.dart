@@ -57,6 +57,9 @@ class DefaultSembastStorageAdapter implements FormStorageAdapter {
   }
 
   @override
+  Future<FormTemplate?> getTemplate(String id) => getTemplateById(id);
+
+  @override
   Future<List<FormTemplate>> getTemplates({
     String? contextScope,
     bool includeArchived = false,
@@ -111,6 +114,9 @@ class DefaultSembastStorageAdapter implements FormStorageAdapter {
     if (map == null) return null;
     return FormSubmission.fromMap(map);
   }
+
+  @override
+  Future<FormSubmission?> getSubmission(String id) => getSubmissionById(id);
 
   @override
   Future<List<FormSubmission>> getSubmissions({

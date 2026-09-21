@@ -9,6 +9,6 @@ void main() {
     await tester.pumpWidget(DynamicFormEngineExampleApp(storageAdapter: storage));
     await tester.pumpAndSettle();
 
-    expect(find.text('Dynamic Form Engine Showcase'), findsOneWidget);
+    expect(find.text('Dynamic Form Engine'), findsOneWidget);
   });
 }

@@ -21,9 +21,11 @@ enum FormFieldType {
   image,
   video,
   document,
+  media,
   signature,
   gps,
   gpsLocation,
+  location,
   barcodeScanner,
   calculated,
   dynamicFieldGroup,
@@ -36,7 +38,12 @@ enum FormFieldType {
       if (type.name.toLowerCase() == lower) return type;
     }
     // Backward compatibility aliases
-    if (lower == 'gps' || lower == 'location') return FormFieldType.gpsLocation;
+    if (lower == 'gps' || lower == 'location' || lower == 'gpslocation') {
+      return FormFieldType.location;
+    }
+    if (lower == 'media' || lower == 'image' || lower == 'photo') {
+      return FormFieldType.media;
+    }
     if (lower == 'dynamicfieldgroup' || lower == 'dynamic_field_group') {
       return FormFieldType.groupRepeater;
     }

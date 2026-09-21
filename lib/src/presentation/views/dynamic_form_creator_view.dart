@@ -14,6 +14,7 @@ class DynamicFormCreatorView extends StatefulWidget {
   final FormStorageAdapter? storageAdapter;
   final String? defaultContextScope;
   final void Function(FormTemplate template)? onSaved;
+  final void Function(FormTemplate template)? onSave;
   final Widget Function(BuildContext context, VoidCallback onSave)? actionButtonsBuilder;
 
   const DynamicFormCreatorView({
@@ -22,6 +23,7 @@ class DynamicFormCreatorView extends StatefulWidget {
     this.storageAdapter,
     this.defaultContextScope,
     this.onSaved,
+    this.onSave,
     this.actionButtonsBuilder,
   });
 
@@ -86,6 +88,7 @@ class _DynamicFormCreatorViewState extends State<DynamicFormCreatorView> {
       }
 
       widget.onSaved?.call(updatedTemplate);
+      widget.onSave?.call(updatedTemplate);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

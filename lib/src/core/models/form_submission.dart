@@ -4,6 +4,7 @@ import 'form_enums.dart';
 class FormSubmission {
   final String id;
   final String formId;
+  String get templateId => formId;
   final String? contextType; // e.g. 'workspace', 'organization', 'tenant'
   final String? contextId; // Generic parent entity or scope ID
   final String? submittedByUserId;
@@ -15,16 +16,19 @@ class FormSubmission {
 
   const FormSubmission({
     required this.id,
-    required this.formId,
+    String? formId,
+    String? templateId,
     this.contextType,
     this.contextId,
     this.submittedByUserId,
     required this.submittedAt,
-    this.answers = const {},
+    Map<String, dynamic>? data,
+    Map<String, dynamic> answers = const {},
     this.status = SubmissionStatus.submitted,
     this.deletedAt,
     this.metadata = const {},
-  });
+  })  : formId = formId ?? templateId ?? '',
+        answers = data ?? answers;
 
   bool get isDeleted => deletedAt != null;
 
@@ -37,23 +41,26 @@ class FormSubmission {
   FormSubmission copyWith({
     String? id,
     String? formId,
+    String? templateId,
     String? contextType,
     String? contextId,
     String? submittedByUserId,
     DateTime? submittedAt,
     Map<String, dynamic>? answers,
+    Map<String, dynamic>? data,
     SubmissionStatus? status,
     DateTime? deletedAt,
     Map<String, dynamic>? metadata,
   }) {
     return FormSubmission(
       id: id ?? this.id,
-      formId: formId ?? this.formId,
+      formId: formId ?? templateId ?? this.formId,
+      templateId: templateId ?? formId ?? this.templateId,
       contextType: contextType ?? this.contextType,
       contextId: contextId ?? this.contextId,
       submittedByUserId: submittedByUserId ?? this.submittedByUserId,
       submittedAt: submittedAt ?? this.submittedAt,
-      answers: answers ?? this.answers,
+      answers: answers ?? data ?? this.answers,
       status: status ?? this.status,
       deletedAt: deletedAt ?? this.deletedAt,
       metadata: metadata ?? this.metadata,
@@ -64,11 +71,13 @@ class FormSubmission {
     return {
       'id': id,
       'formId': formId,
+      'templateId': formId,
       'contextType': contextType,
       'contextId': contextId,
       'submittedByUserId': submittedByUserId,
       'submittedAt': submittedAt.toIso8601String(),
       'answers': answers,
+      'data': answers,
       'status': status.name,
       'deletedAt': deletedAt?.toIso8601String(),
       'metadata': metadata,
@@ -114,9 +123,13 @@ class FormSubmission {
       parsedAnswers = Map<String, dynamic>.from(map['data'] as Map);
     }
 
+    final resolvedFormId =
+        map['formId']?.toString() ?? map['templateId']?.toString() ?? '';
+
     return FormSubmission(
       id: map['id']?.toString() ?? '',
-      formId: map['formId']?.toString() ?? '',
+      formId: resolvedFormId,
+      templateId: resolvedFormId,
       contextType: map['contextType']?.toString(),
       contextId: map['contextId']?.toString() ?? map['farmId']?.toString(),
       submittedByUserId: map['submittedByUserId']?.toString(),

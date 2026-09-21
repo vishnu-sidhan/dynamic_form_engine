@@ -1,11 +1,11 @@
 {
-    "name": "example",
-    "short_name": "example",
+    "name": "Dynamic Form Engine",
+    "short_name": "DynamicForm",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#135D66",
+    "theme_color": "#135D66",
+    "description": "Interactive showcase and engine for dynamic, metadata-driven Flutter forms.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

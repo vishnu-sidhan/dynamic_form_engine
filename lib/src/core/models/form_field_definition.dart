@@ -86,12 +86,13 @@ class FormFieldDefinition {
 
   const FormFieldDefinition({
     required this.id,
-    required this.formId,
-    required this.key,
+    String? formId,
+    String? key,
     required this.label,
     this.hint,
     this.orderIndex = 0,
-    required this.fieldType,
+    FormFieldType? fieldType,
+    FormFieldType? type,
     this.isRequired = false,
     this.isReadOnly = false,
     this.min,
@@ -105,7 +106,12 @@ class FormFieldDefinition {
     this.referenceTarget,
     this.calculationFormula,
     this.metadata = const {},
-  });
+  })  : formId = formId ?? '',
+        key = (key != null && key != '') ? key : id,
+        fieldType = fieldType ?? type ?? FormFieldType.text;
+
+  /// Alias for [fieldType]
+  FormFieldType get type => fieldType;
 
   /// The effective field key used for mapping answers (defaults to [key], fallback [id]).
   String get effectiveKey => key.isNotEmpty ? key : id;
@@ -118,6 +124,7 @@ class FormFieldDefinition {
     String? hint,
     int? orderIndex,
     FormFieldType? fieldType,
+    FormFieldType? type,
     bool? isRequired,
     bool? isReadOnly,
     num? min,
@@ -139,7 +146,7 @@ class FormFieldDefinition {
       label: label ?? this.label,
       hint: hint ?? this.hint,
       orderIndex: orderIndex ?? this.orderIndex,
-      fieldType: fieldType ?? this.fieldType,
+      fieldType: fieldType ?? type ?? this.fieldType,
       isRequired: isRequired ?? this.isRequired,
       isReadOnly: isReadOnly ?? this.isReadOnly,
       min: min ?? this.min,
@@ -165,6 +172,7 @@ class FormFieldDefinition {
       'hint': hint,
       'orderIndex': orderIndex,
       'fieldType': fieldType.name,
+      'type': fieldType.name,
       'isRequired': isRequired,
       'isReadOnly': isReadOnly,
       'min': min,
@@ -226,7 +234,8 @@ class FormFieldDefinition {
         map['showIfValue']?.toString() ?? rules['showIf']?.toString();
 
     // Field type extraction
-    final rawType = map['fieldType']?.toString() ?? 'text';
+    final rawType =
+        map['fieldType']?.toString() ?? map['type']?.toString() ?? 'text';
     final fieldType = FormFieldType.fromString(rawType);
 
     // Calculation formula extraction (can be in validationRules or dedicated field)

@@ -29,7 +29,7 @@ class MediaFieldRenderer extends StatelessWidget {
 
     IconData iconData = Icons.attach_file_rounded;
     String actionLabel = 'Attach Document';
-    if (field.fieldType == FormFieldType.image) {
+    if (field.fieldType == FormFieldType.image || field.fieldType == FormFieldType.media) {
       iconData = Icons.photo_camera_rounded;
       actionLabel = 'Attach Image';
     } else if (field.fieldType == FormFieldType.video) {

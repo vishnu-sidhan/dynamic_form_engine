@@ -5,29 +5,37 @@ import 'form_enums.dart';
 class FormTemplate {
   final String id;
   final String name;
-  final String? description;
+  final String? _title;
+  final String _description;
+  String get description => _description;
+  String get title => name.isNotEmpty ? name : (_title ?? '');
   final String? contextScope; // e.g. workspaceId, tenantId, organizationId, or 'global'
   final bool isSystemLocked;
   final int version;
   final Map<String, dynamic> metadata;
-  final DateTime createdAt;
+  final DateTime? _createdAt;
+  DateTime get createdAt => _createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
   final DateTime? updatedAt;
   final DateTime? deletedAt;
   final List<FormFieldDefinition> fields;
 
   const FormTemplate({
     required this.id,
-    required this.name,
-    this.description,
+    String? name,
+    String? title,
+    String? description,
     this.contextScope,
     this.isSystemLocked = false,
     this.version = 1,
     this.metadata = const {},
-    required this.createdAt,
+    DateTime? createdAt,
     this.updatedAt,
     this.deletedAt,
     this.fields = const [],
-  });
+  })  : name = name ?? title ?? '',
+        _title = title,
+        _description = description ?? '',
+        _createdAt = createdAt;
 
   bool get isArchived => deletedAt != null;
 
@@ -59,6 +67,7 @@ class FormTemplate {
   FormTemplate copyWith({
     String? id,
     String? name,
+    String? title,
     String? description,
     String? contextScope,
     bool? isSystemLocked,
@@ -71,7 +80,8 @@ class FormTemplate {
   }) {
     return FormTemplate(
       id: id ?? this.id,
-      name: name ?? this.name,
+      name: name ?? title ?? this.name,
+      title: title ?? name ?? this.title,
       description: description ?? this.description,
       contextScope: contextScope ?? this.contextScope,
       isSystemLocked: isSystemLocked ?? this.isSystemLocked,
@@ -88,6 +98,7 @@ class FormTemplate {
     return {
       'id': id,
       'name': name,
+      'title': name,
       'description': description,
       'contextScope': contextScope,
       'isSystemLocked': isSystemLocked,
@@ -114,13 +125,13 @@ class FormTemplate {
           .toList();
     }
 
-    DateTime parsedCreatedAt = DateTime.now();
+    DateTime? parsedCreatedAt;
     if (map['createdAt'] != null) {
       if (map['createdAt'] is DateTime) {
         parsedCreatedAt = map['createdAt'] as DateTime;
       } else {
         parsedCreatedAt =
-            DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now();
+            DateTime.tryParse(map['createdAt'].toString());
       }
     }
 
@@ -142,9 +153,13 @@ class FormTemplate {
       }
     }
 
+    final resolvedName =
+        map['name']?.toString() ?? map['title']?.toString() ?? '';
+
     return FormTemplate(
       id: map['id']?.toString() ?? '',
-      name: map['name']?.toString() ?? '',
+      name: resolvedName,
+      title: resolvedName,
       description: map['description']?.toString(),
       contextScope: map['contextScope']?.toString() ?? map['farmId']?.toString(),
       isSystemLocked: map['isSystemLocked'] == true ||

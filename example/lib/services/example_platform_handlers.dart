@@ -142,7 +142,8 @@ class ExamplePlatformHandlers {
     FormFieldDefinition field,
   ) async {
     try {
-      if (field.fieldType == FormFieldType.image) {
+      if (field.fieldType == FormFieldType.image ||
+          field.fieldType == FormFieldType.media) {
         return await _pickImage(context);
       } else if (field.fieldType == FormFieldType.video) {
         return await _pickVideo(context);
@@ -328,10 +329,9 @@ class ExamplePlatformHandlers {
   }
 }
 
-/// Factory function to create a fully functional [FieldRendererRegistry]
-/// wired with real GPS and file/image picker handlers for the showcase app.
-FieldRendererRegistry createFunctionalExampleRegistry() {
-  final registry = FieldRendererRegistry();
+/// Registers device GPS, camera, and file pickers onto a [FieldRendererRegistry] (or global if omitted).
+void registerExamplePlatformHandlers([FieldRendererRegistry? targetRegistry]) {
+  final registry = targetRegistry ?? FieldRendererRegistry.global;
 
   Widget locationBuilder(
     BuildContext ctx,
@@ -347,6 +347,7 @@ FieldRendererRegistry createFunctionalExampleRegistry() {
 
   registry.register(FormFieldType.gps, locationBuilder);
   registry.register(FormFieldType.gpsLocation, locationBuilder);
+  registry.register(FormFieldType.location, locationBuilder);
 
   Widget mediaBuilder(
     BuildContext ctx,
@@ -363,6 +364,13 @@ FieldRendererRegistry createFunctionalExampleRegistry() {
   registry.register(FormFieldType.image, mediaBuilder);
   registry.register(FormFieldType.video, mediaBuilder);
   registry.register(FormFieldType.document, mediaBuilder);
+  registry.register(FormFieldType.media, mediaBuilder);
+}
 
+/// Factory function to create a fully functional [FieldRendererRegistry]
+/// wired with real GPS and file/image picker handlers for the showcase app.
+FieldRendererRegistry createFunctionalExampleRegistry() {
+  final registry = FieldRendererRegistry();
+  registerExamplePlatformHandlers(registry);
   return registry;
 }

@@ -13,6 +13,7 @@ abstract class FormStorageAdapter {
   // ---------------------------------------------------------------------------
   Future<void> saveTemplate(FormTemplate template);
   Future<FormTemplate?> getTemplateById(String id);
+  Future<FormTemplate?> getTemplate(String id) => getTemplateById(id);
   Future<List<FormTemplate>> getTemplates({
     String? contextScope,
     bool includeArchived = false,
@@ -24,6 +25,7 @@ abstract class FormStorageAdapter {
   // ---------------------------------------------------------------------------
   Future<void> saveSubmission(FormSubmission submission);
   Future<FormSubmission?> getSubmissionById(String id);
+  Future<FormSubmission?> getSubmission(String id) => getSubmissionById(id);
   Future<List<FormSubmission>> getSubmissions({bool includeArchived = false});
   Future<List<FormSubmission>> querySubmissions({
     required String formId,

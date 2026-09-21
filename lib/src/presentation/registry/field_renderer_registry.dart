@@ -70,6 +70,7 @@ class FieldRendererRegistry {
     _builders[FormFieldType.image] = mediaBuilder;
     _builders[FormFieldType.video] = mediaBuilder;
     _builders[FormFieldType.document] = mediaBuilder;
+    _builders[FormFieldType.media] = mediaBuilder;
 
     _builders[FormFieldType.signature] = (ctx, f, c) =>
         SignatureFieldRenderer(field: f, controller: c);
@@ -81,6 +82,7 @@ class FieldRendererRegistry {
 
     _builders[FormFieldType.gps] = locationBuilder;
     _builders[FormFieldType.gpsLocation] = locationBuilder;
+    _builders[FormFieldType.location] = locationBuilder;
 
     _builders[FormFieldType.calculated] = (ctx, f, c) =>
         CalculatedFieldRenderer(field: f, controller: c);
