@@ -77,12 +77,28 @@ class LocationFieldRenderer extends StatelessWidget {
                           ),
                   ),
                 ),
-                if (!isReadOnly)
+                if (!isReadOnly) ...[
                   FilledButton.tonalIcon(
                     onPressed: () => _handleCapture(context, currentVal),
                     icon: const Icon(Icons.my_location_rounded, size: 16),
                     label: Text(currentVal.isEmpty ? 'Capture' : 'Update'),
                   ),
+                  if (onCaptureLocation != null)
+                    IconButton(
+                      icon: Icon(Icons.edit_outlined,
+                          size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      tooltip: 'Enter coordinates manually',
+                      onPressed: () => _promptCoordinates(context, currentVal),
+                    ),
+                  if (currentVal.isNotEmpty)
+                    IconButton(
+                      icon: Icon(Icons.close_rounded,
+                          size: 18, color: theme.colorScheme.error),
+                      tooltip: 'Clear coordinates',
+                      onPressed: () =>
+                          controller.updateAnswerAndRecalculate(field.id, ''),
+                    ),
+                ],
               ],
             ),
           ),
@@ -104,8 +120,8 @@ class LocationFieldRenderer extends StatelessWidget {
       final res = await onCaptureLocation!(context, field);
       if (res != null && res.isNotEmpty) {
         controller.updateAnswerAndRecalculate(field.id, res);
-        return;
       }
+      return;
     }
     if (context.mounted) {
       await _promptCoordinates(context, currentVal);

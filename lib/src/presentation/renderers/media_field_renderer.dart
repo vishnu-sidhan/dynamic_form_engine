@@ -123,11 +123,19 @@ class MediaFieldRenderer extends StatelessWidget {
                         IconButton(
                           icon: Icon(Icons.edit_rounded,
                               size: 18, color: theme.colorScheme.primary),
+                          tooltip: 'Choose media',
                           onPressed: () => _handlePick(context, currentVal),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.link_rounded,
+                              size: 18, color: theme.colorScheme.onSurfaceVariant),
+                          tooltip: 'Enter URL or path manually',
+                          onPressed: () => _promptMediaInput(context, currentVal),
                         ),
                         IconButton(
                           icon: Icon(Icons.close_rounded,
                               size: 18, color: theme.colorScheme.error),
+                          tooltip: 'Remove',
                           onPressed: () =>
                               controller.updateAnswerAndRecalculate(field.id, ''),
                         ),
@@ -153,8 +161,8 @@ class MediaFieldRenderer extends StatelessWidget {
       final res = await onPickMedia!(context, field);
       if (res != null && res.isNotEmpty) {
         controller.updateAnswerAndRecalculate(field.id, res);
-        return;
       }
+      return;
     }
     if (context.mounted) {
       await _promptMediaInput(context, currentVal);
