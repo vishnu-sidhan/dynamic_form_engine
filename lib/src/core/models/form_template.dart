@@ -178,4 +178,23 @@ class FormTemplate {
       fields: parsedFields,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormTemplate &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          version == other.version &&
+          contextScope == other.contextScope &&
+          isSystemLocked == other.isSystemLocked &&
+          deletedAt == other.deletedAt;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      version.hashCode ^
+      (contextScope?.hashCode ?? 0);
 }

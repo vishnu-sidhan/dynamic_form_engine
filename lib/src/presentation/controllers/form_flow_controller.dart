@@ -193,7 +193,7 @@ class FormFlowController extends ChangeNotifier {
         id: subId,
         formId: template.id,
         contextType: contextType ?? template.contextScope,
-        contextId: contextId,
+        contextId: contextId ?? template.contextScope,
         submittedByUserId: submittedByUserId,
         submittedAt: DateTime.now(),
         answers: Map<String, dynamic>.from(_answers),

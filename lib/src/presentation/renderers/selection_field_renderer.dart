@@ -31,6 +31,17 @@ class _SelectionFieldRendererState extends State<SelectionFieldRenderer> {
     _loadOptions();
   }
 
+  @override
+  void didUpdateWidget(covariant SelectionFieldRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.field.id != widget.field.id ||
+        oldWidget.field.referenceTarget != widget.field.referenceTarget ||
+        oldWidget.controller.template.contextScope !=
+            widget.controller.template.contextScope) {
+      _loadOptions();
+    }
+  }
+
   Future<void> _loadOptions() async {
     if (widget.field.referenceTarget != null &&
         widget.field.referenceTarget!.isNotEmpty) {
@@ -43,12 +54,17 @@ class _SelectionFieldRendererState extends State<SelectionFieldRenderer> {
         );
         if (mounted) {
           setState(() {
-            _resolvedOptions = options;
+            _resolvedOptions = options.isNotEmpty ? options : widget.field.options;
             _isLoading = false;
           });
         }
       } catch (_) {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() {
+            _resolvedOptions = widget.field.options;
+            _isLoading = false;
+          });
+        }
       }
     } else {
       _resolvedOptions = widget.field.options;

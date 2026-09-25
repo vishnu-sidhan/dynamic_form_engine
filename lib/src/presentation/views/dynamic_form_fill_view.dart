@@ -118,7 +118,7 @@ class _DynamicFormFillViewState extends State<DynamicFormFillView> {
 
   Future<void> _handleSubmit() async {
     try {
-      final submission = await _controller.submit();
+      final submission = await _controller.submit(contextId: _controller.template.contextScope);
       if (submission != null) {
         widget.onSubmitted?.call(submission);
         widget.onSubmit?.call(submission.answers);

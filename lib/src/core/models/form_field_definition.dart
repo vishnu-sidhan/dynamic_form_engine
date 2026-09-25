@@ -271,4 +271,36 @@ class FormFieldDefinition {
           : const {},
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormFieldDefinition &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          formId == other.formId &&
+          key == other.key &&
+          label == other.label &&
+          hint == other.hint &&
+          orderIndex == other.orderIndex &&
+          fieldType == other.fieldType &&
+          isRequired == other.isRequired &&
+          isReadOnly == other.isReadOnly &&
+          min == other.min &&
+          max == other.max &&
+          validationRegex == other.validationRegex &&
+          customErrorMessage == other.customErrorMessage &&
+          dependsOnFieldKey == other.dependsOnFieldKey &&
+          showIfValue == other.showIfValue &&
+          referenceTarget == other.referenceTarget &&
+          calculationFormula == other.calculationFormula;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      key.hashCode ^
+      label.hashCode ^
+      fieldType.hashCode ^
+      (referenceTarget?.hashCode ?? 0) ^
+      (calculationFormula?.hashCode ?? 0);
 }

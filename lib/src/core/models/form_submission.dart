@@ -142,4 +142,23 @@ class FormSubmission {
           : const {},
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormSubmission &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          formId == other.formId &&
+          contextType == other.contextType &&
+          contextId == other.contextId &&
+          status == other.status &&
+          deletedAt == other.deletedAt;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      formId.hashCode ^
+      (contextId?.hashCode ?? 0) ^
+      status.hashCode;
 }
